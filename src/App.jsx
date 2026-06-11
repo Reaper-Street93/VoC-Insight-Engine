@@ -36,7 +36,7 @@ export default function App() {
 
   function handleSample() {
     setFeedback(SAMPLE_FEEDBACK);
-    analyse(SAMPLE_FEEDBACK);
+    setError(null);
   }
 
   return (
