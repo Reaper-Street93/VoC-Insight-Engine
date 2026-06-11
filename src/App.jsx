@@ -1,12 +1,14 @@
 import { useState } from "react";
 import ReportView from "./ReportView.jsx";
 import { SAMPLE_FEEDBACK } from "./sampleData.js";
+import { reportToMarkdown } from "./markdown.js";
 
 export default function App() {
   const [feedback, setFeedback] = useState("");
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   async function analyse(text) {
     if (!text.trim()) {
@@ -39,6 +41,16 @@ export default function App() {
     setError(null);
   }
 
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(reportToMarkdown(report));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't access the clipboard — use Print / PDF instead.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <header className="mb-14">
@@ -48,14 +60,14 @@ export default function App() {
         <h1 className="mt-3 text-5xl font-bold tracking-tight">
           Insight Engine<span className="text-signal">.</span>
         </h1>
-        <p className="mt-4 max-w-xl text-ink/70">
+        <p className="mt-4 max-w-xl text-ink/70 print:hidden">
           Paste a pile of reviews, tickets or survey answers. Get back a
           one-page report: the themes that matter, the sentiment behind each,
           and what to do about them — in order.
         </p>
       </header>
 
-      <section>
+      <section className="print:hidden">
         <div className="flex items-baseline justify-between">
           <label
             htmlFor="feedback"
@@ -99,11 +111,27 @@ export default function App() {
       </section>
 
       {(loading || report) && (
-        <section className="mt-16" aria-live="polite">
-          <div className="border-t border-ink pt-3">
+        <section className="mt-16 print:mt-8" aria-live="polite">
+          <div className="flex items-baseline justify-between border-t border-ink pt-3">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
               02 — Report
             </p>
+            {report && !loading && (
+              <div className="flex gap-6 print:hidden">
+                <button
+                  onClick={handleCopy}
+                  className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
+                >
+                  {copied ? "Copied ✓" : "Copy markdown"}
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
+                >
+                  Print / PDF
+                </button>
+              </div>
+            )}
           </div>
           {loading ? (
             <div className="mt-8 space-y-4">

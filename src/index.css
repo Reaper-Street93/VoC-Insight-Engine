@@ -14,3 +14,10 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Printed report: never split a theme across pages. */
+@media print {
+  article {
+    break-inside: avoid;
+  }
+}
