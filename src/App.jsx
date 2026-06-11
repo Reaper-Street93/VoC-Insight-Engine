@@ -1,55 +1,17 @@
 import { useState } from "react";
-import ReportView from "./ReportView.jsx";
-
-// Hardcoded fake report so the layout can be built and styled
-// before any AI is wired in. Shape matches CONTRACT.md exactly.
-const FAKE_REPORT = {
-  summary:
-    "Customers love the product itself but are losing patience with how it reaches them. Delivery delays and unanswered support emails dominate the negative feedback, while the quality of the product keeps ratings from collapsing.",
-  items_analysed: 47,
-  overall_sentiment: "mixed",
-  themes: [
-    {
-      rank: 1,
-      title: "Deliveries arrive later than promised",
-      sentiment: "negative",
-      frequency: 5,
-      mentions: "roughly 19 of 47 items",
-      example:
-        "Ordered with express shipping and it still took eleven days. No updates, nothing.",
-      action:
-        "Audit the courier SLA and add proactive delay emails before customers have to ask.",
-    },
-    {
-      rank: 2,
-      title: "Support emails go unanswered",
-      sentiment: "negative",
-      frequency: 4,
-      mentions: "roughly 12 of 47 items",
-      example:
-        "I've emailed support three times in two weeks and heard absolutely nothing back.",
-      action:
-        "Set a 24-hour first-response target and an auto-acknowledgement so no ticket feels ignored.",
-    },
-    {
-      rank: 3,
-      title: "Product quality consistently praised",
-      sentiment: "positive",
-      frequency: 4,
-      mentions: "roughly 14 of 47 items",
-      example: "The build quality genuinely surprised me — feels twice the price.",
-      action:
-        "Feature real quality reviews on the product page; it is the strongest counterweight to delivery complaints.",
-    },
-  ],
-};
 
 export default function App() {
   const [feedback, setFeedback] = useState("");
-  const [report, setReport] = useState(null);
+  const [raw, setRaw] = useState(null);
 
-  function handleAnalyse() {
-    setReport(FAKE_REPORT);
+  async function handleAnalyse() {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedback }),
+    });
+    const data = await res.json();
+    setRaw(data.raw ?? data.error);
   }
 
   return (
@@ -96,14 +58,17 @@ export default function App() {
         </div>
       </section>
 
-      {report && (
+      {raw && (
         <section className="mt-16">
           <div className="border-t border-ink pt-3">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
               02 — Report
             </p>
           </div>
-          <ReportView report={report} />
+          {/* Raw dump for now — structured rendering comes next */}
+          <pre className="mt-6 whitespace-pre-wrap font-mono text-sm leading-relaxed text-ink/80">
+            {raw}
+          </pre>
         </section>
       )}
 
