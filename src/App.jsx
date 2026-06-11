@@ -1,8 +1,9 @@
 import { useState } from "react";
+import ReportView from "./ReportView.jsx";
 
 export default function App() {
   const [feedback, setFeedback] = useState("");
-  const [raw, setRaw] = useState(null);
+  const [report, setReport] = useState(null);
 
   async function handleAnalyse() {
     const res = await fetch("/api/analyze", {
@@ -11,7 +12,7 @@ export default function App() {
       body: JSON.stringify({ feedback }),
     });
     const data = await res.json();
-    setRaw(data.raw ?? data.error);
+    setReport(data.report ?? null);
   }
 
   return (
@@ -58,17 +59,14 @@ export default function App() {
         </div>
       </section>
 
-      {raw && (
+      {report && (
         <section className="mt-16">
           <div className="border-t border-ink pt-3">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
               02 — Report
             </p>
           </div>
-          {/* Raw dump for now — structured rendering comes next */}
-          <pre className="mt-6 whitespace-pre-wrap font-mono text-sm leading-relaxed text-ink/80">
-            {raw}
-          </pre>
+          <ReportView report={report} />
         </section>
       )}
 
