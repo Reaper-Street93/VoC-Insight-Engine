@@ -1,15 +1,11 @@
 import express from "express";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { GoogleGenAI } from "@google/genai";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 // In production the same server hosts the built React app from dist/
-app.use(express.static(path.join(__dirname, "dist")));
+app.use(express.static(`${import.meta.dirname}/dist`));
 
 // Reads GEMINI_API_KEY from the environment — the key never reaches the browser.
 // Free key, no card needed: https://aistudio.google.com/apikey
@@ -132,6 +128,9 @@ const MOCK_REPORT = {
   ],
 };
 
+// Overloaded or rate-limited — the two upstream states worth retrying elsewhere.
+const isBusy = (err) => err?.status === 503 || err?.status === 429;
+
 // Free-tier capacity comes and goes per model — walk down this list until
 // one answers. Best model first.
 const MODELS = [
@@ -173,7 +172,7 @@ ${feedback}`;
     } catch (err) {
       lastErr = err;
       // Busy or rate-limited — fall through to the next model.
-      if (err?.status === 503 || err?.status === 429) {
+      if (isBusy(err)) {
         console.warn(`${model} unavailable (${err.status}), trying next model`);
         continue;
       }
@@ -206,7 +205,7 @@ app.post("/api/analyze", async (req, res) => {
     res.json({ report: await generateReport(feedback) });
   } catch (err) {
     console.error(err);
-    if (err?.status === 503 || err?.status === 429) {
+    if (isBusy(err)) {
       return res.status(503).json({
         error:
           "Every free-tier model is busy or rate-limited right now — wait a minute and try again.",

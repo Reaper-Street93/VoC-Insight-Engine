@@ -52,7 +52,7 @@ Requires Node 22+.
 npm install
 cp .env.example .env   # add your free GEMINI_API_KEY (aistudio.google.com/apikey)
 
-npm run server         # API on :3001
+npm start              # API on :3001
 npm run dev            # frontend on :5173 (proxies /api to :3001)
 ```
 
