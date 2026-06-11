@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,8 +11,9 @@ app.use(express.json({ limit: "1mb" }));
 // In production the same server hosts the built React app from dist/
 app.use(express.static(path.join(__dirname, "dist")));
 
-// Reads ANTHROPIC_API_KEY from the environment — the key never reaches the browser.
-const anthropic = new Anthropic();
+// Reads GEMINI_API_KEY from the environment — the key never reaches the browser.
+// Free key, no card needed: https://aistudio.google.com/apikey
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({}) : null;
 
 const MOCK_AI = process.env.MOCK_AI === "1";
 
@@ -141,23 +142,17 @@ app.post("/api/analyze", async (req, res) => {
     return res.json({ report: MOCK_REPORT });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return res.status(503).json({
       error:
-        "Server is missing its ANTHROPIC_API_KEY. Set it in .env (local) or the Render dashboard (production).",
+        "Server is missing its GEMINI_API_KEY. Grab a free one at aistudio.google.com/apikey and set it in .env (local) or the Render dashboard (production).",
     });
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: { format: { type: "json_schema", schema: REPORT_SCHEMA } },
-      messages: [
-        {
-          role: "user",
-          content: `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
 
 Guidance:
 - Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
@@ -167,20 +162,22 @@ Guidance:
 
 FEEDBACK:
 ${feedback}`,
+      config: {
+        responseFormat: {
+          text: { mimeType: "application/json", schema: REPORT_SCHEMA },
         },
-      ],
+      },
     });
 
-    if (response.stop_reason === "refusal") {
-      return res
-        .status(502)
-        .json({ error: "The model declined to analyse this input." });
-    }
-
-    const text = response.content.find((block) => block.type === "text")?.text;
-    res.json({ report: JSON.parse(text) });
+    res.json({ report: JSON.parse(response.text) });
   } catch (err) {
     console.error(err);
+    if (err?.status === 429) {
+      return res.status(429).json({
+        error:
+          "The free tier is rate-limited — wait a minute and try again.",
+      });
+    }
     res.status(502).json({ error: "The analysis call failed. Try again." });
   }
 });

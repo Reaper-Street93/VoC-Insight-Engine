@@ -21,8 +21,9 @@ can spend their time on the deciding.
    analyse, read the report. State handled with `useState`, the API call with
    `async/await` + `fetch`.
 2. **Backend (Node + Express)** — one endpoint, `POST /api/analyze`. It holds
-   the Anthropic API key (which must never reach the browser) and asks Claude
-   to cluster the feedback into ranked themes.
+   the API key (which must never reach the browser) and asks Gemini to
+   cluster the feedback into ranked themes. The Gemini free tier means the
+   whole project runs at £0.
 3. **Structured outputs** — the model answers against a JSON schema that
    mirrors [CONTRACT.md](CONTRACT.md), so the response is guaranteed to parse.
    No regex, no hoping.
@@ -49,7 +50,7 @@ Requires Node 22+.
 
 ```bash
 npm install
-cp .env.example .env   # add your ANTHROPIC_API_KEY (console.anthropic.com)
+cp .env.example .env   # add your free GEMINI_API_KEY (aistudio.google.com/apikey)
 
 npm run server         # API on :3001
 npm run dev            # frontend on :5173 (proxies /api to :3001)
@@ -66,7 +67,7 @@ npm run build && npm start
 
 One process serves both the built frontend and the API. `render.yaml` is a
 ready-made [Render](https://render.com) blueprint — connect the repo, set
-`ANTHROPIC_API_KEY` in the dashboard, done.
+`GEMINI_API_KEY` in the dashboard, done.
 
 ## Design
 
@@ -77,5 +78,5 @@ text, IBM Plex Mono for labels and data.
 
 ## Stack
 
-React 19 · Vite · Tailwind CSS 4 · Node/Express 5 · Anthropic API
-(Claude Opus 4.8, structured outputs) · Render
+React 19 · Vite · Tailwind CSS 4 · Node/Express 5 · Gemini API
+(gemini-3.5-flash free tier, structured outputs) · Render
