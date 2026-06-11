@@ -1,8 +1,15 @@
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
+
+// In production the same server hosts the built React app from dist/
+app.use(express.static(path.join(__dirname, "dist")));
 
 // Reads ANTHROPIC_API_KEY from the environment — the key never reaches the browser.
 const anthropic = new Anthropic();
