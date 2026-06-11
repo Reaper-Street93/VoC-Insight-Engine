@@ -132,6 +132,57 @@ const MOCK_REPORT = {
   ],
 };
 
+// Free-tier capacity comes and goes per model — walk down this list until
+// one answers. Best model first.
+const MODELS = [
+  "gemini-3.5-flash",
+  "gemini-3-flash-preview",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+];
+
+async function generateReport(feedback) {
+  const prompt = `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
+
+Guidance:
+- Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
+- Rank by how much customers care: weigh how often a theme appears and how strongly people feel about it.
+- The example must be a real quote from the feedback (light trimming is fine, no invention).
+- Actions must be specific enough to put on a roadmap, not "improve communication".
+
+FEEDBACK:
+${feedback}`;
+
+  let lastErr;
+  for (const model of MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: REPORT_SCHEMA,
+        },
+      });
+      const report = JSON.parse(response.text);
+      // Schemas can't enforce numeric ranges — clamp so the 1-5 meter never lies.
+      for (const theme of report.themes ?? []) {
+        theme.frequency = Math.min(5, Math.max(1, Math.round(theme.frequency)));
+      }
+      return report;
+    } catch (err) {
+      lastErr = err;
+      // Busy or rate-limited — fall through to the next model.
+      if (err?.status === 503 || err?.status === 429) {
+        console.warn(`${model} unavailable (${err.status}), trying next model`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.post("/api/analyze", async (req, res) => {
@@ -152,31 +203,13 @@ app.post("/api/analyze", async (req, res) => {
   }
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
-
-Guidance:
-- Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
-- Rank by how much customers care: weigh how often a theme appears and how strongly people feel about it.
-- The example must be a real quote from the feedback (light trimming is fine, no invention).
-- Actions must be specific enough to put on a roadmap, not "improve communication".
-
-FEEDBACK:
-${feedback}`,
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: REPORT_SCHEMA,
-      },
-    });
-
-    res.json({ report: JSON.parse(response.text) });
+    res.json({ report: await generateReport(feedback) });
   } catch (err) {
     console.error(err);
-    if (err?.status === 429) {
-      return res.status(429).json({
+    if (err?.status === 503 || err?.status === 429) {
+      return res.status(503).json({
         error:
-          "The free tier is rate-limited — wait a minute and try again.",
+          "Every free-tier model is busy or rate-limited right now — wait a minute and try again.",
       });
     }
     // Surface the real upstream reason so failures are debuggable from the UI.
