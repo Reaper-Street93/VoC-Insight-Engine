@@ -98,33 +98,26 @@ export default function App() {
         )}
       </section>
 
-      {loading && (
+      {(loading || report) && (
         <section className="mt-16" aria-live="polite">
           <div className="border-t border-ink pt-3">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
               02 — Report
             </p>
           </div>
-          <div className="mt-8 space-y-4">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink/50">
-              <span className="inline-block h-3 w-3 animate-pulse bg-signal align-baseline" />{" "}
-              Reading every piece of feedback…
-            </p>
-            <div className="h-4 w-3/4 animate-pulse bg-rule" />
-            <div className="h-4 w-2/3 animate-pulse bg-rule" />
-            <div className="h-4 w-1/2 animate-pulse bg-rule" />
-          </div>
-        </section>
-      )}
-
-      {report && !loading && (
-        <section className="mt-16">
-          <div className="border-t border-ink pt-3">
-            <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
-              02 — Report
-            </p>
-          </div>
-          <ReportView report={report} />
+          {loading ? (
+            <div className="mt-8 space-y-4">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink/50">
+                <span className="inline-block h-3 w-3 animate-pulse bg-signal align-baseline" />{" "}
+                Reading every piece of feedback…
+              </p>
+              <div className="h-4 w-3/4 animate-pulse bg-rule" />
+              <div className="h-4 w-2/3 animate-pulse bg-rule" />
+              <div className="h-4 w-1/2 animate-pulse bg-rule" />
+            </div>
+          ) : (
+            <ReportView report={report} />
+          )}
         </section>
       )}
 

@@ -13,7 +13,9 @@ app.use(express.static(path.join(__dirname, "dist")));
 
 // Reads GEMINI_API_KEY from the environment — the key never reaches the browser.
 // Free key, no card needed: https://aistudio.google.com/apikey
-const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({}) : null;
+// Real keys are ~39 chars; this also catches the "AIza..." placeholder from .env.example.
+const HAS_KEY = (process.env.GEMINI_API_KEY ?? "").length > 20;
+const ai = HAS_KEY ? new GoogleGenAI({}) : null;
 
 const MOCK_AI = process.env.MOCK_AI === "1";
 
@@ -142,10 +144,10 @@ app.post("/api/analyze", async (req, res) => {
     return res.json({ report: MOCK_REPORT });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!HAS_KEY) {
     return res.status(503).json({
       error:
-        "Server is missing its GEMINI_API_KEY. Grab a free one at aistudio.google.com/apikey and set it in .env (local) or the Render dashboard (production).",
+        "GEMINI_API_KEY is missing or still the placeholder. Grab a free one at aistudio.google.com/apikey and paste the full key into .env (local) or the Render dashboard (production).",
     });
   }
 
@@ -163,9 +165,8 @@ Guidance:
 FEEDBACK:
 ${feedback}`,
       config: {
-        responseFormat: {
-          text: { mimeType: "application/json", schema: REPORT_SCHEMA },
-        },
+        responseMimeType: "application/json",
+        responseJsonSchema: REPORT_SCHEMA,
       },
     });
 
@@ -178,7 +179,11 @@ ${feedback}`,
           "The free tier is rate-limited — wait a minute and try again.",
       });
     }
-    res.status(502).json({ error: "The analysis call failed. Try again." });
+    // Surface the real upstream reason so failures are debuggable from the UI.
+    const detail = (err?.message ?? "").slice(0, 200);
+    res.status(502).json({
+      error: `The analysis call failed${detail ? `: ${detail}` : ". Try again."}`,
+    });
   }
 });
 
