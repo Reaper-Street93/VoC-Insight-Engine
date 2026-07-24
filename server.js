@@ -144,18 +144,7 @@ const MODELS = [
   "gemini-2.5-flash-lite",
 ];
 
-async function generateReport(feedback) {
-  const prompt = `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
-
-Guidance:
-- Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
-- Rank by how much customers care: weigh how often a theme appears and how strongly people feel about it.
-- The example must be a real quote from the feedback (light trimming is fine, no invention).
-- Actions must be specific enough to put on a roadmap, not "improve communication".
-
-FEEDBACK:
-${feedback}`;
-
+async function callModel(prompt) {
   let lastErr;
   for (const model of MODELS) {
     try {
@@ -167,12 +156,7 @@ ${feedback}`;
           responseJsonSchema: REPORT_SCHEMA,
         },
       });
-      const report = JSON.parse(response.text);
-      // Schemas can't enforce numeric ranges — clamp so the 1-5 meter never lies.
-      for (const theme of report.themes ?? []) {
-        theme.frequency = Math.min(5, Math.max(1, Math.round(theme.frequency)));
-      }
-      return report;
+      return JSON.parse(response.text);
     } catch (err) {
       lastErr = err;
       // Busy or rate-limited — fall through to the next model.
@@ -184,6 +168,80 @@ ${feedback}`;
     }
   }
   throw lastErr;
+}
+
+const analysePrompt = (feedback) => `You are a customer-insight analyst. Read the customer feedback below and produce a one-page insights report following the schema.
+
+Guidance:
+- Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
+- Rank by how much customers care: weigh how often a theme appears and how strongly people feel about it.
+- The example must be a real quote from the feedback (light trimming is fine, no invention).
+- Actions must be specific enough to put on a roadmap, not "improve communication".
+
+FEEDBACK:
+${feedback}`;
+
+const mergePrompt = (partials, totalItems) => `You are a customer-insight analyst. A feedback batch was too large to read in one sitting, so it was analysed in ${partials.length} parts. Below are the ${partials.length} partial reports as JSON.
+
+Merge them into ONE final report following the same schema:
+- Combine themes that describe the same underlying issue, even if worded differently.
+- Re-rank by impact across the WHOLE batch: a theme that tops every partial report outranks one that tops only one.
+- Keep only genuine quotes lifted from the partial reports — never invent.
+- "mentions" should talk about the whole batch of ${totalItems} items.
+- The summary should read as if you read everything yourself; never mention parts or partial reports.
+
+PARTIAL REPORTS:
+${JSON.stringify(partials, null, 2)}`;
+
+// One call comfortably handles most pastes. Beyond this, split on line
+// boundaries, analyse each piece, then merge — map-reduce for feedback.
+const CHUNK_CHARS = 80_000;
+
+function splitIntoChunks(text) {
+  // A little over the line is cheaper as one call than as two.
+  if (text.length <= CHUNK_CHARS * 1.25) return [text];
+  const chunks = [];
+  let current = "";
+  for (const line of text.split("\n")) {
+    if (current && current.length + line.length + 1 > CHUNK_CHARS) {
+      chunks.push(current);
+      current = "";
+    }
+    current += (current ? "\n" : "") + line;
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+// Schemas can't enforce numeric ranges or rank order — tidy both.
+function finishReport(report) {
+  report.themes ??= [];
+  report.themes.sort((a, b) => a.rank - b.rank);
+  report.themes.forEach((theme, i) => {
+    theme.rank = i + 1;
+    theme.frequency = Math.min(5, Math.max(1, Math.round(theme.frequency)));
+  });
+  return report;
+}
+
+async function generateReport(feedback) {
+  const chunks = splitIntoChunks(feedback);
+  if (chunks.length === 1) {
+    return finishReport(await callModel(analysePrompt(feedback)));
+  }
+
+  // Sequential on purpose: parallel calls trip the free tier's per-minute cap.
+  const partials = [];
+  for (const [i, chunk] of chunks.entries()) {
+    console.log(`chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`);
+    partials.push(await callModel(analysePrompt(chunk)));
+  }
+
+  const totalItems = partials.reduce((n, p) => n + (p.items_analysed ?? 0), 0);
+  const merged = await callModel(mergePrompt(partials, totalItems));
+  // The count is arithmetic, not judgement — don't let the merge model guess it.
+  merged.items_analysed = totalItems;
+  return finishReport(merged);
 }
 
 // The Gemini key is a free-tier key with a daily quota — a public endpoint
