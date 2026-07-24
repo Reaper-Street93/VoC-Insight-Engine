@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import ReportView from "./ReportView.jsx";
 import { SAMPLE_FEEDBACK } from "./sampleData.js";
 import { reportToMarkdown } from "./markdown.js";
+import { parseCsv, hasHeaderRow, pickTextColumn } from "./csv.js";
 import { MAX_FEEDBACK_CHARS } from "../limits.js";
 
 export default function App() {
@@ -10,6 +11,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [importInfo, setImportInfo] = useState(null);
+  const fileInputRef = useRef(null);
   // index.html sets the class before first paint; this just mirrors it.
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains("dark")
@@ -54,7 +57,47 @@ export default function App() {
 
   function handleSample() {
     setFeedback(SAMPLE_FEEDBACK);
+    setImportInfo(null);
     setError(null);
+  }
+
+  // A CSV import keeps its parsed rows around so the column can be switched.
+  function applyImport(info) {
+    setImportInfo(info);
+    setFeedback(
+      info.rows
+        .map((r) => r[info.column] ?? "")
+        .filter((cell) => cell.trim())
+        .join("\n\n")
+    );
+    setError(null);
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    const text = await file.text();
+    if (/\.csv$/i.test(file.name)) {
+      const parsed = parseCsv(text);
+      if (!parsed.length) {
+        setError("That file looks empty.");
+        return;
+      }
+      const header = hasHeaderRow(parsed);
+      const headers = header
+        ? parsed[0]
+        : parsed[0].map((_, i) => `Column ${i + 1}`);
+      const rows = header ? parsed.slice(1) : parsed;
+      applyImport({
+        filename: file.name,
+        headers,
+        rows,
+        column: pickTextColumn(rows),
+      });
+    } else {
+      setImportInfo(null);
+      setFeedback(text);
+      setError(null);
+    }
   }
 
   async function handleCopy() {
@@ -100,22 +143,80 @@ export default function App() {
           >
             The more, the better
           </label>
-          <button
-            onClick={handleSample}
-            disabled={loading}
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal disabled:opacity-40"
-          >
-            Try it with sample data
-          </button>
+          <div className="flex gap-5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.txt,text/csv,text/plain"
+              className="hidden"
+              onChange={(e) => {
+                handleFile(e.target.files[0]);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current.click()}
+              disabled={loading}
+              className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal disabled:opacity-40"
+            >
+              Upload .csv / .txt
+            </button>
+            <button
+              onClick={handleSample}
+              disabled={loading}
+              className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal disabled:opacity-40"
+            >
+              Try it with sample data
+            </button>
+          </div>
         </div>
         <textarea
           id="feedback"
           value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Paste customer feedback here — reviews, tickets, survey responses, any mix…"
+          onChange={(e) => {
+            setFeedback(e.target.value);
+            // A manual edit means the CSV column mapping no longer applies.
+            setImportInfo(null);
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            handleFile(e.dataTransfer.files[0]);
+          }}
+          placeholder="Paste customer feedback here — reviews, tickets, survey responses, any mix… or drop a .csv / .txt file"
           rows={10}
           className="mt-3 w-full resize-y border border-ink/20 bg-white p-4 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-ink dark:bg-ink/5"
         />
+        {importInfo && (
+          <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-xs text-ink/60">
+            <span>
+              {importInfo.filename} — {importInfo.rows.length.toLocaleString()}{" "}
+              rows, reading column
+            </span>
+            <select
+              value={importInfo.column}
+              onChange={(e) =>
+                applyImport({ ...importInfo, column: Number(e.target.value) })
+              }
+              className="border border-ink/20 bg-transparent px-1 py-0.5 outline-none focus:border-ink"
+            >
+              {importInfo.headers.map((h, i) => (
+                <option key={i} value={i}>
+                  {h || `Column ${i + 1}`}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => {
+                setImportInfo(null);
+                setFeedback("");
+              }}
+              className="underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
+            >
+              Clear
+            </button>
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between">
           <span
             className={`font-mono text-xs ${
