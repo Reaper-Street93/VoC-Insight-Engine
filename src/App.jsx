@@ -9,6 +9,21 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  // index.html sets the class before first paint; this just mirrors it.
+  const [dark, setDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    try {
+      localStorage.theme = next ? "dark" : "light";
+    } catch {
+      // Private browsing — the choice just won't persist.
+    }
+  }
 
   async function analyse(text) {
     if (!text.trim()) {
@@ -54,9 +69,18 @@ export default function App() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <header className="mb-14">
-        <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
-          Distil
-        </p>
+        <div className="flex items-baseline justify-between">
+          <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
+            Distil
+          </p>
+          <button
+            onClick={toggleTheme}
+            aria-pressed={dark}
+            className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 transition-colors hover:text-signal print:hidden"
+          >
+            {dark ? "○ Light" : "● Dark"}
+          </button>
+        </div>
         <h1 className="mt-3 text-5xl font-bold tracking-tight">
           Insight Engine<span className="text-signal">.</span>
         </h1>
@@ -89,7 +113,7 @@ export default function App() {
           onChange={(e) => setFeedback(e.target.value)}
           placeholder="Paste customer feedback here — reviews, tickets, survey responses, any mix…"
           rows={10}
-          className="mt-3 w-full resize-y border border-ink/20 bg-white p-4 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-ink"
+          className="mt-3 w-full resize-y border border-ink/20 bg-white p-4 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-ink dark:bg-ink/5"
         />
         <div className="mt-3 flex items-center justify-between">
           <span className="font-mono text-xs text-ink/40">

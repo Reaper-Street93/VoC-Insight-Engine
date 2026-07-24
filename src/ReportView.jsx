@@ -1,7 +1,7 @@
 const SENTIMENT_COLOURS = {
-  positive: "text-emerald-700",
+  positive: "text-emerald-700 dark:text-emerald-400",
   negative: "text-signal",
-  mixed: "text-amber-700",
+  mixed: "text-amber-700 dark:text-amber-400",
 };
 
 function SentimentTag({ sentiment }) {
