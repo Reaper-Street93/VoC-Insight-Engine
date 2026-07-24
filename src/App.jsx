@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReportView from "./ReportView.jsx";
 import { SAMPLE_FEEDBACK } from "./sampleData.js";
 import { reportToMarkdown } from "./markdown.js";
 import { parseCsv, hasHeaderRow, pickTextColumn } from "./csv.js";
 import { loadHistory, addToHistory, removeFromHistory } from "./history.js";
+import { reportToHash, reportFromHash } from "./share.js";
 import CompareView, { formatWhen } from "./CompareView.jsx";
 import { MAX_FEEDBACK_CHARS } from "../limits.js";
 
@@ -18,6 +19,14 @@ export default function App() {
   const [history, setHistory] = useState(loadHistory);
   const [compareBase, setCompareBase] = useState(null);
   const [comparePair, setComparePair] = useState(null);
+  const [shared, setShared] = useState(false);
+
+  // Arriving via a share link? The report is sitting in the URL fragment.
+  useEffect(() => {
+    reportFromHash(window.location.hash).then((sharedReport) => {
+      if (sharedReport) setReport(sharedReport);
+    });
+  }, []);
   // index.html sets the class before first paint; this just mirrors it.
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains("dark")
@@ -54,6 +63,8 @@ export default function App() {
       }
       setReport(data.report);
       setHistory(addToHistory(data.report));
+      // A fresh analysis makes any share link in the address bar stale.
+      window.history.replaceState(null, "", window.location.pathname);
     } catch (err) {
       setError(err.message || "Could not reach the server. Try again.");
     } finally {
@@ -130,6 +141,18 @@ export default function App() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setError("Couldn't access the clipboard — use Print / PDF instead.");
+    }
+  }
+
+  async function handleShare() {
+    try {
+      const hash = await reportToHash(report);
+      window.history.replaceState(null, "", hash);
+      await navigator.clipboard.writeText(window.location.href);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      setError("Couldn't build the share link — copy the markdown instead.");
     }
   }
 
@@ -279,6 +302,12 @@ export default function App() {
             </p>
             {report && !loading && (
               <div className="flex gap-6 print:hidden">
+                <button
+                  onClick={handleShare}
+                  className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
+                >
+                  {shared ? "Link copied ✓" : "Share link"}
+                </button>
                 <button
                   onClick={handleCopy}
                   className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
