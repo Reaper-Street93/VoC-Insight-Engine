@@ -1,7 +1,11 @@
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
+import { MAX_FEEDBACK_CHARS } from "./limits.js";
 
 const app = express();
+// Render sits behind a proxy — without this, every request shares one IP
+// and the rate limiter would punish everyone for one heavy user.
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 
 // In production the same server hosts the built React app from dist/
@@ -182,12 +186,69 @@ ${feedback}`;
   throw lastErr;
 }
 
+// The Gemini key is a free-tier key with a daily quota — a public endpoint
+// with no brakes would let one visitor burn the whole allowance. Sliding
+// window per IP, plus a global daily ceiling as the backstop.
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_PER_WINDOW = 8;
+const MAX_PER_DAY_GLOBAL = 150;
+
+const hitsByIp = new Map();
+let dailyCount = 0;
+let dailyCountDate = new Date().toDateString();
+
+function rateLimited(ip) {
+  const now = Date.now();
+
+  const today = new Date().toDateString();
+  if (today !== dailyCountDate) {
+    dailyCountDate = today;
+    dailyCount = 0;
+  }
+  if (dailyCount >= MAX_PER_DAY_GLOBAL) return "day";
+
+  const recent = (hitsByIp.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  if (recent.length >= MAX_PER_WINDOW) {
+    hitsByIp.set(ip, recent);
+    return "window";
+  }
+
+  recent.push(now);
+  hitsByIp.set(ip, recent);
+  dailyCount += 1;
+
+  // Don't let the map grow forever on a long-running server.
+  if (hitsByIp.size > 5000) {
+    for (const [key, times] of hitsByIp) {
+      if (times.every((t) => now - t >= WINDOW_MS)) hitsByIp.delete(key);
+    }
+  }
+  return null;
+}
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.post("/api/analyze", async (req, res) => {
   const feedback = (req.body?.feedback ?? "").trim();
   if (!feedback) {
     return res.status(400).json({ error: "No feedback provided." });
+  }
+  if (feedback.length > MAX_FEEDBACK_CHARS) {
+    return res.status(413).json({
+      error: `That's ${feedback.length.toLocaleString()} characters — the limit is ${MAX_FEEDBACK_CHARS.toLocaleString()}. Trim the input and try again.`,
+    });
+  }
+
+  const limited = rateLimited(req.ip);
+  if (limited === "window") {
+    return res.status(429).json({
+      error: "Too many analyses in a short burst — wait a few minutes and try again.",
+    });
+  }
+  if (limited === "day") {
+    return res.status(429).json({
+      error: "The engine has hit its free-tier budget for today. Come back tomorrow.",
+    });
   }
 
   if (MOCK_AI) {
