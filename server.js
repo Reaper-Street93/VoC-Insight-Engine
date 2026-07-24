@@ -62,10 +62,11 @@ const REPORT_SCHEMA = {
             type: "string",
             description: "Rough human-readable count, e.g. 'roughly 18 of 47 items'.",
           },
-          example: {
-            type: "string",
+          quotes: {
+            type: "array",
             description:
-              "A genuine representative quote lifted from the input feedback.",
+              "2 to 4 genuine quotes lifted from the input feedback, the most representative first. Never invented.",
+            items: { type: "string" },
           },
           action: {
             type: "string",
@@ -79,7 +80,7 @@ const REPORT_SCHEMA = {
           "sentiment",
           "frequency",
           "mentions",
-          "example",
+          "quotes",
           "action",
         ],
         additionalProperties: false,
@@ -102,8 +103,11 @@ const MOCK_REPORT = {
       sentiment: "negative",
       frequency: 5,
       mentions: "roughly 19 of 47 items",
-      example:
+      quotes: [
         "Ordered with express shipping and it still took eleven days. No updates, nothing.",
+        "The delivery estimate changed from 3 days to 12 days at checkout. Almost cancelled.",
+        "Beautiful product, awful wait. 11 days and the tracking link never worked once.",
+      ],
       action:
         "Audit the courier SLA and add proactive delay emails before customers have to ask.",
     },
@@ -113,8 +117,10 @@ const MOCK_REPORT = {
       sentiment: "negative",
       frequency: 4,
       mentions: "roughly 12 of 47 items",
-      example:
+      quotes: [
         "I've emailed support three times in two weeks and heard absolutely nothing back.",
+        "Emailed about a damaged box, heard nothing. Product 10/10, support 2/10.",
+      ],
       action:
         "Set a 24-hour first-response target and an auto-acknowledgement so no ticket feels ignored.",
     },
@@ -124,8 +130,10 @@ const MOCK_REPORT = {
       sentiment: "positive",
       frequency: 4,
       mentions: "roughly 14 of 47 items",
-      example:
+      quotes: [
         "The build quality genuinely surprised me — feels twice the price.",
+        "My last one from a competitor cracked in a month; this feels like it'll last years.",
+      ],
       action:
         "Feature real quality reviews on the product page; it is the strongest counterweight to delivery complaints.",
     },
@@ -175,7 +183,7 @@ const analysePrompt = (feedback) => `You are a customer-insight analyst. Read th
 Guidance:
 - Cluster genuinely related complaints into one theme; don't split hairs or pad the list.
 - Rank by how much customers care: weigh how often a theme appears and how strongly people feel about it.
-- The example must be a real quote from the feedback (light trimming is fine, no invention).
+- Quotes must be real quotes from the feedback (light trimming is fine, no invention). Give 2-4 per theme, the most representative first.
 - Actions must be specific enough to put on a roadmap, not "improve communication".
 
 FEEDBACK:

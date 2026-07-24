@@ -31,7 +31,10 @@ A single one-page insights report, as JSON in this exact shape:
       "sentiment": "negative",
       "frequency": 4,
       "mentions": "roughly 18 of 47 items",
-      "example": "A real quote lifted from the feedback that typifies this theme.",
+      "quotes": [
+        "A real quote lifted from the feedback that typifies this theme.",
+        "One or two more real quotes backing the same theme up."
+      ],
       "action": "One concrete, specific thing the business should do about it."
     }
   ]
@@ -51,7 +54,7 @@ Field rules:
 | `themes[].sentiment` | string | One of `positive`, `negative`, `mixed` |
 | `themes[].frequency` | integer | 1–5 scale: how often this theme showed up |
 | `themes[].mentions` | string | Human-readable rough count, e.g. "roughly 18 of 47 items" |
-| `themes[].example` | string | A genuine representative quote from the input |
+| `themes[].quotes` | array | 2–4 genuine quotes from the input, most representative first |
 | `themes[].action` | string | A suggested next step a product/CS team could actually take |
 
 ## Why this shape
@@ -60,8 +63,9 @@ Field rules:
   matter, in order".
 - **Sentiment per theme, not just overall** — "shipping" can be a positive theme
   and "pricing" a negative one in the same dataset.
-- **An example quote per theme** — keeps the report honest. Anyone reading it
-  can see the customer's actual words, not just the machine's summary.
+- **Real quotes per theme, not just one** — keeps the report honest and
+  checkable. The first quote typifies the theme; the rest are the evidence a
+  sceptical reader can expand.
 - **A suggested action per theme** — turns a research artefact into something a
   team can put on a roadmap. This is the translation step: customer voice in,
   business action out.

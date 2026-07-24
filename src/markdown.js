@@ -11,12 +11,13 @@ export function reportToMarkdown(report) {
   ];
 
   for (const theme of report.themes) {
+    const quotes = theme.quotes ?? (theme.example ? [theme.example] : []);
     lines.push(
       `## ${String(theme.rank).padStart(2, "0")} — ${theme.title}`,
       "",
       `**Sentiment:** ${theme.sentiment} · **Frequency:** ${theme.frequency}/5 (${theme.mentions})`,
       "",
-      `> “${theme.example}”`,
+      ...quotes.map((quote) => `> “${quote}”`),
       "",
       `**Action →** ${theme.action}`,
       ""
