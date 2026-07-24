@@ -2,6 +2,7 @@ import { useState } from "react";
 import ReportView from "./ReportView.jsx";
 import { SAMPLE_FEEDBACK } from "./sampleData.js";
 import { reportToMarkdown } from "./markdown.js";
+import { MAX_FEEDBACK_CHARS } from "../limits.js";
 
 export default function App() {
   const [feedback, setFeedback] = useState("");
@@ -116,12 +117,24 @@ export default function App() {
           className="mt-3 w-full resize-y border border-ink/20 bg-white p-4 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-ink dark:bg-ink/5"
         />
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-mono text-xs text-ink/40">
-            {feedback.length.toLocaleString()} characters
+          <span
+            className={`font-mono text-xs ${
+              feedback.length > MAX_FEEDBACK_CHARS
+                ? "text-signal"
+                : feedback.length > MAX_FEEDBACK_CHARS * 0.9
+                  ? "text-amber-700 dark:text-amber-400"
+                  : "text-ink/40"
+            }`}
+          >
+            {feedback.length.toLocaleString()}
+            {feedback.length > MAX_FEEDBACK_CHARS * 0.9 &&
+              ` / ${MAX_FEEDBACK_CHARS.toLocaleString()}`}{" "}
+            characters
+            {feedback.length > MAX_FEEDBACK_CHARS && " — too much to analyse"}
           </span>
           <button
             onClick={() => analyse(feedback)}
-            disabled={loading}
+            disabled={loading || feedback.length > MAX_FEEDBACK_CHARS}
             className="bg-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.2em] text-paper transition-colors hover:bg-signal disabled:cursor-wait disabled:opacity-60"
           >
             {loading ? "Analysing…" : "Analyse feedback →"}
