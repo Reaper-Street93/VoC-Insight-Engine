@@ -3,6 +3,8 @@ import ReportView from "./ReportView.jsx";
 import { SAMPLE_FEEDBACK } from "./sampleData.js";
 import { reportToMarkdown } from "./markdown.js";
 import { parseCsv, hasHeaderRow, pickTextColumn } from "./csv.js";
+import { loadHistory, addToHistory, removeFromHistory } from "./history.js";
+import CompareView, { formatWhen } from "./CompareView.jsx";
 import { MAX_FEEDBACK_CHARS } from "../limits.js";
 
 export default function App() {
@@ -13,6 +15,9 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [importInfo, setImportInfo] = useState(null);
   const fileInputRef = useRef(null);
+  const [history, setHistory] = useState(loadHistory);
+  const [compareBase, setCompareBase] = useState(null);
+  const [comparePair, setComparePair] = useState(null);
   // index.html sets the class before first paint; this just mirrors it.
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains("dark")
@@ -48,6 +53,7 @@ export default function App() {
         throw new Error(data.error || "Something went wrong. Try again.");
       }
       setReport(data.report);
+      setHistory(addToHistory(data.report));
     } catch (err) {
       setError(err.message || "Could not reach the server. Try again.");
     } finally {
@@ -98,6 +104,23 @@ export default function App() {
       setFeedback(text);
       setError(null);
     }
+  }
+
+  function handleCompareClick(entry) {
+    if (!compareBase) {
+      setCompareBase(entry);
+    } else if (compareBase.id === entry.id) {
+      setCompareBase(null);
+    } else {
+      setComparePair([compareBase, entry]);
+      setCompareBase(null);
+    }
+  }
+
+  function handleDeleteEntry(id) {
+    setHistory(removeFromHistory(id));
+    if (compareBase?.id === id) setCompareBase(null);
+    if (comparePair?.some((entry) => entry.id === id)) setComparePair(null);
   }
 
   async function handleCopy() {
@@ -283,6 +306,84 @@ export default function App() {
             </div>
           ) : (
             <ReportView report={report} />
+          )}
+        </section>
+      )}
+
+      {history.length > 0 && (
+        <section className="mt-16 print:hidden">
+          <div className="flex items-baseline justify-between border-t border-ink pt-3">
+            <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
+              03 — Past reports
+            </p>
+            {comparePair && (
+              <button
+                onClick={() => setComparePair(null)}
+                className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 underline decoration-rule underline-offset-4 transition-colors hover:text-signal"
+              >
+                Close comparison
+              </button>
+            )}
+          </div>
+
+          {comparePair ? (
+            <CompareView a={comparePair[0]} b={comparePair[1]} />
+          ) : (
+            <>
+              {compareBase && (
+                <p className="mt-4 border-l-2 border-signal pl-3 font-mono text-xs text-ink/60">
+                  Comparing with {formatWhen(compareBase.at)} — pick a second
+                  report.
+                </p>
+              )}
+              <ul className="mt-4">
+                {history.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-rule py-3"
+                  >
+                    <button
+                      onClick={() => {
+                        setReport(entry.report);
+                        setComparePair(null);
+                        setError(null);
+                      }}
+                      className="min-w-0 flex-1 text-left transition-colors hover:text-signal"
+                      title="Reopen this report"
+                    >
+                      <span className="font-mono text-xs text-ink/50">
+                        {formatWhen(entry.at)}
+                      </span>
+                      <span className="ml-4 text-sm">
+                        {entry.report.items_analysed} items —{" "}
+                        {entry.report.summary.length > 90
+                          ? `${entry.report.summary.slice(0, 90)}…`
+                          : entry.report.summary}
+                      </span>
+                    </button>
+                    <span className="flex gap-4">
+                      <button
+                        onClick={() => handleCompareClick(entry)}
+                        className={`font-mono text-xs uppercase tracking-[0.2em] underline decoration-rule underline-offset-4 transition-colors hover:text-signal ${
+                          compareBase?.id === entry.id
+                            ? "text-signal"
+                            : "text-ink/50"
+                        }`}
+                      >
+                        {compareBase?.id === entry.id ? "Picked" : "Compare"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        aria-label="Delete this report from history"
+                        className="font-mono text-xs uppercase tracking-[0.2em] text-ink/50 transition-colors hover:text-signal"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       )}

@@ -6,7 +6,7 @@ const SENTIMENT_COLOURS = {
   mixed: "text-amber-700 dark:text-amber-400",
 };
 
-function SentimentTag({ sentiment }) {
+export function SentimentTag({ sentiment }) {
   return (
     <span
       className={`font-mono text-xs uppercase tracking-[0.2em] ${
@@ -18,7 +18,7 @@ function SentimentTag({ sentiment }) {
   );
 }
 
-function FrequencyMeter({ value }) {
+export function FrequencyMeter({ value }) {
   return (
     <span className="flex gap-1" title={`Frequency ${value} of 5`}>
       {[1, 2, 3, 4, 5].map((i) => (
