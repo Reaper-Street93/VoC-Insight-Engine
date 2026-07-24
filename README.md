@@ -8,6 +8,24 @@ roughly how often each shows up, a real customer quote, and a suggested action
 Think of a research assistant who reads 500 reviews overnight and hands you a
 single page saying *"here are the five things that matter, in order."*
 
+## What it does
+
+- **Paste or import** — type into the box, or upload / drop a `.csv` or
+  `.txt` export straight from Zendesk, Intercom or an app store. The engine
+  picks the likeliest text column and lets you switch it.
+- **Ranked themes with evidence** — each theme carries sentiment, a 1–5
+  frequency meter, a lead quote and an expandable set of further real quotes,
+  so a sceptical reader can check the machine's claims.
+- **Handles big batches** — oversized inputs are split, analysed in pieces
+  and merged into one report (map-reduce), instead of gambling on one call.
+- **Reports that travel** — copy as Markdown, print to PDF, or share as a
+  link: the whole report rides compressed inside the URL fragment, so there
+  is nothing to store server-side.
+- **Memory** — past reports are kept locally; reopen any of them, or read
+  two side by side to see what changed between batches.
+- **A defended API** — per-IP rate limiting, a global daily budget and an
+  input cap keep the free-tier Gemini key safe on a public URL.
+
 ## Why it exists
 
 Raw feedback is noisy and nobody has time to read it. Translating the voice of
@@ -73,8 +91,10 @@ ready-made [Render](https://render.com) blueprint — connect the repo, set
 
 Swiss-editorial, on purpose: the output is literally a one-page report, so the
 UI reads like a typeset research memo — paper background, ink type, hairline
-rules, numbered findings and a single signal-red accent. Space Grotesk for
-text, IBM Plex Mono for labels and data.
+rules, numbered findings and a single signal-red accent. Open Sans for text,
+IBM Plex Mono for labels and data. Dark mode is the same report printed on
+dark stock: it follows your OS, a header toggle overrides it, and printing
+always comes out on light paper.
 
 ## Stack
 
