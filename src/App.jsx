@@ -7,6 +7,7 @@ import { loadHistory, addToHistory, removeFromHistory } from "./history.js";
 import { reportToHash, reportFromHash } from "./share.js";
 import CompareView, { formatWhen } from "./CompareView.jsx";
 import { MAX_FEEDBACK_CHARS } from "../limits.js";
+import { LogoMark } from "./Logo.jsx";
 
 export default function App() {
   const [feedback, setFeedback] = useState("");
@@ -157,28 +158,44 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="mx-auto max-w-3xl px-6 pb-16">
+      {/* --- Brand bar: gives the app a recognisable identity --- */}
       <header className="mb-14">
-        <div className="flex items-baseline justify-between">
-          <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
-            Distil
-          </p>
-          <button
-            onClick={toggleTheme}
-            aria-pressed={dark}
-            className="font-mono text-xs uppercase tracking-[0.2em] text-ink/60 transition-colors hover:text-signal print:hidden"
-          >
-            {dark ? "○ Light" : "● Dark"}
-          </button>
+        <div className="flex items-center justify-between border-b-2 border-ink py-5 print:border-ink">
+          <span className="flex items-center gap-3">
+            <LogoMark size={26} />
+            <span className="text-xl font-bold leading-none tracking-tight">
+              Distil
+            </span>
+          </span>
+          <div className="flex items-center gap-7">
+            <span className="font-mono text-[11px] uppercase tracking-[0.24em] text-ink/50 print:hidden">
+              Voice of Customer
+            </span>
+            <button
+              onClick={toggleTheme}
+              aria-pressed={dark}
+              className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink/60 transition-colors hover:text-signal print:hidden"
+            >
+              {dark ? "○ Light" : "● Dark"}
+            </button>
+          </div>
         </div>
-        <h1 className="mt-3 text-5xl font-bold tracking-tight">
-          Insight Engine<span className="text-signal">.</span>
-        </h1>
-        <p className="mt-4 max-w-xl text-ink/70 print:hidden">
-          Paste a pile of reviews, tickets or survey answers. Get back a
-          one-page report: the themes that matter, the sentiment behind each,
-          and what to do about them — in order.
-        </p>
+
+        {/* --- Editorial hero --- */}
+        <div className="pt-14 print:pt-6">
+          <p className="font-mono text-xs uppercase tracking-[0.24em] text-signal">
+            01 — Paste feedback
+          </p>
+          <h1 className="mt-4 max-w-[14ch] text-6xl font-bold leading-[0.98] tracking-tight">
+            The voice of the customer, distilled<span className="text-signal">.</span>
+          </h1>
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink/70 print:hidden">
+            Paste a pile of reviews, tickets or survey answers. Get back a
+            one-page report: the themes that matter, the sentiment behind each,
+            and what to do about them — ranked in order.
+          </p>
+        </div>
       </header>
 
       <section className="print:hidden">
@@ -187,7 +204,7 @@ export default function App() {
             htmlFor="feedback"
             className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60"
           >
-            The more, the better
+            Your feedback — the more the better
           </label>
           <div className="flex gap-5">
             <input
@@ -230,8 +247,8 @@ export default function App() {
             handleFile(e.dataTransfer.files[0]);
           }}
           placeholder="Paste customer feedback here — reviews, tickets, survey responses, any mix… or drop a .csv / .txt file"
-          rows={10}
-          className="mt-3 w-full resize-y border border-ink/20 bg-white p-4 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-ink dark:bg-ink/5"
+          rows={8}
+          className="mt-3 w-full resize-y border-2 border-ink bg-white p-5 text-sm leading-relaxed outline-none placeholder:text-ink/30 focus:border-signal dark:bg-ink/5"
         />
         {importInfo && (
           <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-xs text-ink/60">
@@ -282,7 +299,7 @@ export default function App() {
           <button
             onClick={() => analyse(feedback)}
             disabled={loading || feedback.length > MAX_FEEDBACK_CHARS}
-            className="bg-ink px-6 py-3 font-mono text-xs uppercase tracking-[0.2em] text-paper transition-colors hover:bg-signal disabled:cursor-wait disabled:opacity-60"
+            className="bg-signal px-6 py-3.5 font-bold text-white transition-colors hover:bg-signal/85 disabled:cursor-wait disabled:opacity-60"
           >
             {loading ? "Analysing…" : "Analyse feedback →"}
           </button>
@@ -296,8 +313,8 @@ export default function App() {
 
       {(loading || report) && (
         <section className="mt-16 print:mt-8" aria-live="polite">
-          <div className="flex items-baseline justify-between border-t border-ink pt-3">
-            <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
+          <div className="flex items-baseline justify-between border-t-2 border-ink pt-3">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-signal">
               02 — Report
             </p>
             {report && !loading && (
@@ -341,8 +358,8 @@ export default function App() {
 
       {history.length > 0 && (
         <section className="mt-16 print:hidden">
-          <div className="flex items-baseline justify-between border-t border-ink pt-3">
-            <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
+          <div className="flex items-baseline justify-between border-t-2 border-ink pt-3">
+            <p className="font-mono text-xs uppercase tracking-[0.24em] text-signal">
               03 — Past reports
             </p>
             {comparePair && (
@@ -417,7 +434,11 @@ export default function App() {
         </section>
       )}
 
-      <footer className="mt-24 border-t border-rule pt-4">
+      <footer className="mt-24 flex items-center justify-between gap-4 border-t-2 border-ink pt-4">
+        <span className="flex items-center gap-2">
+          <LogoMark size={18} />
+          <span className="text-sm font-bold tracking-tight">Distil</span>
+        </span>
         <p className="font-mono text-xs text-ink/40">
           Built by Sebastian Barclay — feedback in, decisions out.
         </p>
