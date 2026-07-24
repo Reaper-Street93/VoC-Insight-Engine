@@ -55,7 +55,7 @@ export default function App() {
     <div className="mx-auto max-w-3xl px-6 py-16">
       <header className="mb-14">
         <p className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60">
-          Voice of Customer
+          Distil
         </p>
         <h1 className="mt-3 text-5xl font-bold tracking-tight">
           Insight Engine<span className="text-signal">.</span>
@@ -73,7 +73,7 @@ export default function App() {
             htmlFor="feedback"
             className="font-mono text-xs uppercase tracking-[0.25em] text-ink/60"
           >
-            01 — Input
+            The more, the better
           </label>
           <button
             onClick={handleSample}
